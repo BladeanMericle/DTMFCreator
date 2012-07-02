@@ -43,26 +43,14 @@ public final class DtmfCreator {
             put("D", new double[]{941.0, 1633.0});
         } };
 
-    /** 音声エンコードテーブル. */
-    private static final Hashtable<String, AudioFormat.Encoding> ENCODINGS =
-        new Hashtable<String, AudioFormat.Encoding>() { {
-            put("ALAW", AudioFormat.Encoding.ALAW);
-            put("PCM_SIGNED", AudioFormat.Encoding.PCM_SIGNED);
-            put("PCM_UNSIGNED", AudioFormat.Encoding.PCM_UNSIGNED);
-            put("ULAW", AudioFormat.Encoding.ULAW);
-        } };
-
     /** コマンドラインオプションテーブル. */
     private static final Options OPTIONS =
         new Options() { {
-            addOption("e", "Encoding", true,
-                    "エンコーディング(ALAW, PCM_SIGNED, PCM_UNSIGNED, ULAW)");
             addOption("r", "SampleRate", true, "サンプリングレート(Hz)");
             addOption("s", "SampleSize", true, "サンプリングサイズ(bit)");
             addOption("c", "Correction", true, "周波数補正(%)");
             addOption("l", "Length", true, "音声の長さ(ms)");
             addOption("p", "Path", true, "出力先ファイルパス");
-            addOption("v", "Volume", true, "ボリューム");
         } };
 
     /** デフォルトコンストラクタの禁止. */
@@ -76,33 +64,23 @@ public final class DtmfCreator {
             CommandLineParser parser = new BasicParser();
             CommandLine commandLine = parser.parse(OPTIONS, args);
 
-            AudioFormat.Encoding encoding = getEncoding(commandLine);
             float sampleRate = getSampleRate(commandLine);
             int sampleSize = getSampleSize(commandLine);
             int correction = getCorrection(commandLine);
             long length = getLength(commandLine);
             String path = getPath(commandLine);
 
-            byte[] waveData = new byte[(int) (sampleRate * (length / 1000.0))];
+            byte[] waveData = new byte[(int) (sampleRate * ((double) length / 1000.0))];
             double[] frequencies = FREQUENCIES.get("2");
             for (int i = 0; i < waveData.length; ++i) {
-                double magnification = (double) (Byte.MAX_VALUE - frequencies.length) / (double) frequencies.length;
+                double magnification = ((1 << (sampleSize - 1)) - 1) / frequencies.length;
                 for (int j = 0; j < frequencies.length; ++j) {
-                    frequencies[j] = sampleRate / (frequencies[j] * ((double) (correction + 100) / 100.0));
-                    //frequencies[j] = sampleRate / frequencies[j];
-                    waveData[i] += (byte)(magnification * Math.sin(((double) i / frequencies[j]) * Math.PI * 2.0));
+                    frequencies[j] = frequencies[j] * ((double) (correction + 100) / 100.0);
+                    waveData[i] += (byte) (magnification * Math.sin((double) i * (frequencies[j] * Math.PI * 2.0 / sampleRate)));
                 }
             }
             AudioInputStream inputStream = new AudioInputStream(
                     new ByteArrayInputStream(waveData),
-//                    new AudioFormat(
-//                            encoding,
-//                            sampleRate,
-//                            sampleSize,
-//                            1,
-//                            sampleSize,
-//                            sampleRate,
-//                            false),
                     new AudioFormat(sampleRate, sampleSize, 1, true, false),
                     waveData.length);
             AudioSystem.write(
@@ -124,29 +102,12 @@ public final class DtmfCreator {
     }
 
     /**
-     * コマンドラインからエンコーディングを取得します.
-     * @param commandLine コマンドライン
-     * @return エンコーディング
-     */
-    private static AudioFormat.Encoding getEncoding(
-            final CommandLine commandLine) {
-        AudioFormat.Encoding encoding = AudioFormat.Encoding.PCM_SIGNED;
-        if (commandLine.hasOption("e")) {
-            encoding = ENCODINGS.get(commandLine.getOptionValue("e"));
-        }
-        if (encoding == null) {
-            throw new IllegalArgumentException("無効なエンコーディングです。");
-        }
-        return encoding;
-    }
-
-    /**
      * コマンドラインからサンプリングレートを取得します.
      * @param commandLine コマンドライン
      * @return サンプリングレート
      */
     private static float getSampleRate(final CommandLine commandLine) {
-        float sampleRate = 8000.0f;
+        float sampleRate = 44100.0f;
         if (commandLine.hasOption("r")) {
             sampleRate = Float.valueOf(commandLine.getOptionValue("r"));
         }
@@ -159,7 +120,7 @@ public final class DtmfCreator {
      * @return サンプリングサイズ
      */
     private static int getSampleSize(final CommandLine commandLine) {
-        int sampleSize = 16;
+        int sampleSize = 8;
         if (commandLine.hasOption("s")) {
             sampleSize = Integer.valueOf(commandLine.getOptionValue("s"));
         }
@@ -198,7 +159,8 @@ public final class DtmfCreator {
      * @return 出力先ファイルパス
      */
     private static String getPath(final CommandLine commandLine) {
-        String path = "." + File.separator;
+        // String path = "." + File.separator;
+        String path = "d:\\voice\\";
         if (commandLine.hasOption("p")) {
             path = commandLine.getOptionValue("p");
             File folder = new File(path);
