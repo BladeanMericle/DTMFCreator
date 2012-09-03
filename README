@@ -8,9 +8,6 @@ DTMFCreator.jar
 org.mericle.DtmfCreator
 
 === Command Line Options ===
-"e", "Encoding" ... エンコーディング(ALAW, PCM_SIGNED, PCM_UNSIGNED, ULAW) ※デフォルト:PCM_SIGNED
-"r", "SampleRate" ... "サンプリングレート(Hz) ※デフォルト:8000
-"s", "SampleSize" ... サンプリングサイズ(bit) ※デフォルト:8
 "c", "Correction" ... 周波数補正(%) ※デフォルト:0
 "l", "Length" ... 音声の長さ(ms) ※デフォルト:1000
 "p", "Path" ... 出力先ファイルパス ※デフォルト:".\"
